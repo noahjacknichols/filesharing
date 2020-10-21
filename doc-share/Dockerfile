@@ -2,10 +2,11 @@ FROM node:12
 
 WORKDIR /docker/app
 
-COPY . ./
+
 COPY package*.json ./
 
 RUN npm install
+COPY . ./
 
 RUN npm run-script build
 
