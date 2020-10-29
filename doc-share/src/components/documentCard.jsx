@@ -89,10 +89,9 @@ class documentCard extends React.Component {
     this.props.deleteCard(this.state.uuid);
 
     if (this.state.uuid !== null && this.state.user_id !== null) {
-      var url =
-        API + "/documents?user=" + this.state.user_id + "&action=delete";
+      var url = API + "/documents?user=" + this.state.user_id;
       fetch(url, {
-        method: "POST",
+        method: "DELETE",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -107,7 +106,7 @@ class documentCard extends React.Component {
       })
         .then((res) => res.json())
         .then((result) => {
-          console.log("deleted");
+          console.log(result);
         })
         .catch((error) => {
           console.log(error);
@@ -158,6 +157,10 @@ class documentCard extends React.Component {
           console.log(error);
         });
     }
+  };
+
+  editClicked = () => {
+    this.props.editClicked(this.state.uuid);
   };
 
   formatDate() {
@@ -213,6 +216,13 @@ class documentCard extends React.Component {
               className="icon black fas fa-trash-alt"
               onClick={this.deleteClick}
             ></i>
+          </Col>
+          <Col xs={4}>
+            <div>
+              <button className="editButton" onClick={this.editClicked}>
+                Edit
+              </button>
+            </div>
           </Col>
         </Row>
       );

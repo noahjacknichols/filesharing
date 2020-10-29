@@ -1,7 +1,9 @@
+from uuid import uuid4
 from flask_restful import Resource, reqparse
-from flask import jsonify, request
+from flask import jsonify
 from datetime import datetime, date
 from common import db
+import uuid
 import werkzeug
 import os
 
@@ -12,6 +14,7 @@ upload_path = "static/server"
 supported_file_types = {
                         'txt': 'text/', 'pdf': 'pdf/',
                         'py': 'code/', 'java': 'code/', 'html': 'code/',
+                        'js': 'code/', 'jsx': 'code/', 'css': 'code/',
                         'png': 'image/', 'jpg': 'image/', 'jpeg': 'image/',
                         'csv': 'data/',
                         'zip': 'other/' 
@@ -36,38 +39,51 @@ class documents(Resource):
                 user_id = args['user']
 
                 if(user_id is not None):
-                    # get all documents owned by user id
-                    query = "SELECT uuid_id, directory_loc, document_name, date, public FROM documents WHERE user_id = %s"
-                    doc_ids = cursor.execute(query, user_id)
+                    query = "SELECT * FROM documents WHERE user_id = %s"
+                    
+                    numDocs = cursor.execute(query, user_id)
+                    if(numDocs > 0):
+                        columns = cursor.description
+                        result = [{columns[index][0]:column for index, column in enumerate(value)} for value in cursor.fetchall()]
 
-                    if(doc_ids > 0):
-                        payload = []
-                        resp = cursor.fetchall()
+                        return jsonify(result)
 
-                        for result in resp:
-                            # print(result)
-                            content = {
-                                "doc_id": result[0],
-                                "location": result[1],
-                                "file_name": result[2],
-                                "date": result[3],
-                                "status": result[4]
-                                }
-                            payload.append(content)
+                        
+                    # else:
+                    #     # get all documents owned by user id
+                    #     query = "SELECT uuid_id, directory_loc, document_name, date, public FROM documents WHERE user_id = %s"
+                    #     doc_ids = cursor.execute(query, user_id)
 
-                        return jsonify(payload)
+                    #     if(doc_ids > 0):
+                    #         payload = []
+                    #         resp = cursor.fetchall()
+
+                    #         for result in resp:
+                    #             # print(result)
+                    #             content = {
+                    #                 "doc_id": result[0],
+                    #                 "location": result[1],
+                    #                 "file_name": result[2],
+                    #                 "date": result[3],
+                    #                 "status": result[4]
+                    #                 }
+                    #             payload.append(content)
+
+                    #         return jsonify(payload)
                         
                 else:
                     return "no user or key submitted", 400
 
             except:
                 print('QUERY FAILED')
+                return {}, 400
 
             finally:
                 conn.close()
             
         except Exception as e:
             print(e)
+            return {}, 400
 
 
 
@@ -78,13 +94,12 @@ class documents(Resource):
             try:
                 cursor = conn.cursor()
                 parser.add_argument('user', type=str)
-                parser.add_argument('action', type=str)
                 args = parser.parse_args()
 
                 user_id = args['user']
-                action = args['action']
 
-                if user_id is not None and action == "insert":
+                if user_id is not None:
+                    print("here")
                     parser.add_argument('file', type=werkzeug.datastructures.FileStorage, location='files')
                     args = parser.parse_args()
                     file_to_upload = args["file"]
@@ -96,35 +111,65 @@ class documents(Resource):
                         folder = supported_file_types[ext]
                         location = upload_path + '/' + folder
                         date = datetime.now()
+                        doc_id = uuid4()
+                        
+
 
                         # INSERT file data into DB to generate uuid
-                        insert = 'INSERT INTO documents (user_id, directory_loc, document_name, date, public) VALUES (%s, %s, %s, %s, %s)'
-                        values = (user_id, location, file_name, date.strftime('%Y-%m-%d %H:%M:%S'), 1)
+                        insert = 'INSERT INTO documents (uuid_id, user_id, directory_loc, document_name, date, public) VALUES (%s, %s, %s, %s, %s, %s)'
+                        values = (str(doc_id), user_id, location, file_name, date.strftime('%Y-%m-%d %H:%M:%S'), 1)
+                        
                         cursor.execute(insert, values)
                         conn.commit()
+                        print("inserted")
 
                         # SELECT for the uuid
-                        query = 'SELECT uuid_id FROM documents WHERE (user_id=%s AND directory_loc=%s AND document_name=%s AND date=%s)'
-                        values = (user_id, location, file_name, date.strftime('%Y-%m-%d %H:%M:%S'))
-                        cursor.execute(query, values)
-                        response = cursor.fetchall()[0]
-                        uuid = response[0]
+                        # query = 'SELECT uuid_id FROM documents WHERE (user_id=%s AND directory_loc=%s AND document_name=%s AND date=%s)'
+                        # values = (user_id, location, file_name, date.strftime('%Y-%m-%d %H:%M:%S'))
+                        # cursor.execute(query, values)
+                        # response = cursor.fetchall()[0]
+                        # uuid = response[0]
 
                         # # save file to server
-                        file_to_upload.save(os.path.join(upload_path, folder + uuid + '.' + ext))
-                        
+                        file_to_upload.save(os.path.join(upload_path, folder + str(doc_id) + '.' + ext))
+                        print("HJER WE GO")
                         return jsonify({
-                                    "doc_id": uuid,
-                                    "location": location,
-                                    "file_name": file_name,
+                                    "uuid_id": str(doc_id),
+                                    "directory_loc": location,
+                                    "document_name": file_name,
                                     "date": date,
-                                    "status": 1  # will need to change this when we actually do something with status
+                                    "public": 1  # will need to change this when we actually do something with status
                                 })
 
                     else:
                         return 'unsupported file type', 400
-                
-                elif user_id is not None and action == "delete":
+
+                else:
+                    return 'no user submitted', 400
+            
+            except:
+                print('QUERY FAILED')
+                return {}, 400
+
+            finally:
+                conn.close()
+            
+        except Exception as e:
+            print(e)
+            return {}, 400
+
+    def delete(self):
+        try:
+            conn = db.mysql.connect()
+
+            try:
+                cursor = conn.cursor()
+                parser.add_argument('user', type=str)
+                args = parser.parse_args()
+
+                user_id = args['user']
+
+                if user_id is not None:
                     parser.add_argument('uuid', location='json')
                     parser.add_argument('name', location='json')
                     parser.add_argument('date', location='json')
@@ -144,30 +189,26 @@ class documents(Resource):
 
                     # DELETE from server
                     file_loc = args['path'] + args['uuid'] + '.' + file_ext(args['name'])
+                    print(file_loc)
                     if os.path.exists(file_loc):
                         os.remove(file_loc)
                     
-                    return jsonify({
-                                    "doc_id": uuid,
-                                    "location": path,
-                                    "file_name": file_name,
-                                    "date": date,
-                                    "status": 1  # will need to change this when we actually do something with status
-                                })
-
+                    return {
+                            "request":"success"  # will need to change this when we actually do something with status
+                                }
                 else:
                     return 'no user submitted', 400
             
-            except Exception as e:
-                print(e)
-            
+            except:
+                print('QUERY FAILED')
+                return {}, 400
+
             finally:
                 conn.close()
-
+            
         except Exception as e:
             print(e)
-
-        
+            return {}, 400
 
     def put(self):
         parser.add_argument('public', type=str)
