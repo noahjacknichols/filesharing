@@ -23,7 +23,7 @@ class download(Resource):
         location = directory + doc_id + '.' + ext
 
         if os.path.exists(location):
-            return send_from_directory(directory, doc_id + '.' + ext, as_attachment=True)
+            return send_from_directory(directory, doc_id + '.' + ext, as_attachment=True, cache_timeout=-1)
 
         else:
             return 'file not found', 404    
