@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "startHTTPS"]
+CMD ["npm", "start"]
