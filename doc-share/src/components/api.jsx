@@ -5,5 +5,3 @@ export const API = "https://3.136.172.47:5000";
 //export const API = "http://localhost:5000";
 export const HOST = "https://3.136.172.47";
 // export const HOST = "http://localhost:3000";
-
-// export const API = "172.31.20.122:5000"
