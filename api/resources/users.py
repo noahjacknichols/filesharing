@@ -17,8 +17,7 @@ class users(Resource):
 
             try:
                 cursor = conn.cursor()
-                print("test1")
-                
+                print("test1")                
                 if(args['email'] is not None and args['pass'] is not None):
                     query = "SELECT user_id, name FROM users WHERE email = %s AND password = SHA2(%s, 256)"
                     tup = (args['email'], args['pass'])
